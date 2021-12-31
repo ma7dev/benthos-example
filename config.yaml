@@ -1,0 +1,70 @@
+input:
+  label: ""
+  csv:
+    paths:
+      - ./data/train.csv
+      - ./data/test.csv
+    parse_header_row: true
+    delimiter: ','
+
+pipeline:
+  processors:
+    - bloblang: |
+        root.passenger_id = this.PassengerId
+
+        # test data doesn't contain survived column 
+        let survived = if (this.Survived != null) {
+          this.Survived.number()
+        } else {
+          "UKN"
+        }
+
+        root.status = if ($survived == "UKN") {
+            "UKN"
+          } else if ($survived == 1) {
+            "alive"
+          } else if ($survived == 0) {
+            "dead"
+          } else {
+            "UNK"
+          }
+        
+        # remove double quotes then split on comma
+        let name = this.Name.replace("\"","").split(",")
+
+        root.first_name = $name.index(1).split(".").index(1).replace("(","").replace(")","").trim()
+        
+        root.last_name = $name.index(0).trim()
+        
+        let class = this.Pclass.number()
+        root.class = if ($class == 1) {
+            "bronze"
+          } else if ($class == 2) {
+            "silver"
+          } else if ($class == 3) {
+            "gold"
+          } else {
+            "UNK"
+          }
+        
+        # some examples don't contain age information
+        let age = if (this.Age != "") {
+            this.Age.number()
+          } else {
+            -1
+          }
+          
+        root.age = if ($age == -1) {
+            "UKN"
+          } else if ($age < 13) {
+            "kid"
+          } else if ($age < 21) {
+            "young adult"
+          } else if ($age < 50) {
+            "adult"
+          } else {
+            "old fart"
+          }
+
+output:
+  type: stdout
